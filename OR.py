@@ -2,18 +2,20 @@ import pandas as pd
 from pulp import *
 
 # ----------------------------
-# DATASET GENERATION
+# DATASET
 # ----------------------------
 
-rooms = ["R101", "R102", "R103"]
-timeslots = list(range(1, 46))  # 45 slots (5 days x 9)
+rooms = ["R101", "R102"]
+timeslots = list(range(1, 46))  # 5 days x 9
 sections = ["CS3A", "CS3B"]
 
 subjects = {
     "Linear Algebra": 3,
     "Software Engineering": 3,
     "Operations Research": 3,
-    "Automata Theory": 3
+    "Automata Theory": 3,
+    "Information Assurance": 3,
+    "Distributed Systems": 3
 }
 
 instructors = {
@@ -21,30 +23,40 @@ instructors = {
     "Dina": ["Linear Algebra"],
     "Nina": ["Operations Research"],
     "Noel": ["Software Engineering"],
-    "Rey": ["Software Engineering", "Automata Theory"]
+    "Rey": ["Software Engineering", "Automata Theory"],
+    "Joshua": ["Information Assurance"],
+    "Simon": ["Distributed Systems"]
 }
 
-section_subjects = {
-    "CS3A": list(subjects.keys()),
-    "CS3B": list(subjects.keys())
-}
+# ----------------------------
+# PRE-ASSIGN INSTRUCTOR (FAST)
+# ----------------------------
+
+subject_instructor = {}
+
+for subject in subjects:
+    for instructor, teachable in instructors.items():
+        if subject in teachable:
+            subject_instructor[subject] = instructor
+            break
+
+# ----------------------------
+# BUILD DATAFRAME (REDUCED SIZE)
+# ----------------------------
 
 rows = []
 
 for room in rooms:
     for time in timeslots:
         for section in sections:
-            for subject in section_subjects[section]:
-                for instructor, teachable in instructors.items():
-                    if subject in teachable:
-                        rows.append({
-                            "room": room,
-                            "time": time,
-                            "section": section,
-                            "subject": subject,
-                            "instructor": instructor,
-                            "units": subjects[subject]
-                        })
+            for subject in subjects:
+                rows.append({
+                    "room": room,
+                    "time": time,
+                    "section": section,
+                    "subject": subject,
+                    "instructor": subject_instructor[subject]
+                })
 
 df = pd.DataFrame(rows)
 
@@ -52,173 +64,111 @@ df = pd.DataFrame(rows)
 # MODEL
 # ----------------------------
 
-model = LpProblem("Class_Scheduling", LpMinimize)
+model = LpProblem("Scheduling", LpMinimize)
 
-# Decision Variables
 x = {i: LpVariable(f"x_{i}", cat="Binary") for i in df.index}
 
 # ----------------------------
-# HELPER VARIABLES (y)
-# ----------------------------
-y = {}
-
-for section in sections:
-    for time in timeslots:
-        y[(section, time)] = LpVariable(f"y_{section}_{time}", cat="Binary")
-
-        model += y[(section, time)] == lpSum(
-            x[i] for i in x
-            if df.loc[i, "section"] == section and df.loc[i, "time"] == time
-        )
-
-# ----------------------------
-# INSTRUCTOR CONSISTENCY (z)
-# ----------------------------
-z = {}
-
-for section in sections:
-    for subject in subjects:
-        for instructor in instructors:
-            if subject in instructors[instructor]:
-                z[(section, subject, instructor)] = LpVariable(
-                    f"z_{section}_{subject}_{instructor}", cat="Binary"
-                )
-
-# Exactly ONE instructor per subject per section
-for section in sections:
-    for subject in subjects:
-        model += lpSum(
-            z[(section, subject, instructor)]
-            for instructor in instructors
-            if (section, subject, instructor) in z
-        ) == 1
-
-# Link x and z
-for i in df.index:
-    row = df.loc[i]
-    key = (row["section"], row["subject"], row["instructor"])
-    if key in z:
-        model += x[i] <= z[key]
-
-# ----------------------------
-# CONSTRAINTS
+# HELPERS
 # ----------------------------
 
-# A. Room constraint
-for room in rooms:
-    for time in timeslots:
+def get_day(t): return (t - 1) // 9
+days = range(5)
+
+# ----------------------------
+# BASIC CONSTRAINTS
+# ----------------------------
+
+# Room constraint
+for r in rooms:
+    for t in timeslots:
         model += lpSum(
             x[i] for i in x
-            if df.loc[i, "room"] == room and df.loc[i, "time"] == time
+            if df.loc[i, "room"] == r and df.loc[i, "time"] == t
         ) <= 1
 
-# B. Instructor constraint
-for instructor in instructors:
-    for time in timeslots:
+# Instructor constraint
+for inst in subject_instructor.values():
+    for t in timeslots:
         model += lpSum(
             x[i] for i in x
-            if df.loc[i, "instructor"] == instructor and df.loc[i, "time"] == time
+            if df.loc[i, "instructor"] == inst and df.loc[i, "time"] == t
         ) <= 1
 
-# C. Section constraint
-for section in sections:
-    for time in timeslots:
+# Section constraint
+for s in sections:
+    for t in timeslots:
         model += lpSum(
             x[i] for i in x
-            if df.loc[i, "section"] == section and df.loc[i, "time"] == time
+            if df.loc[i, "section"] == s and df.loc[i, "time"] == t
         ) <= 1
 
-# D. Unit constraint
-for section in sections:
-    for subject in subjects:
+# Units constraint
+for s in sections:
+    for subj in subjects:
         model += lpSum(
             x[i] for i in x
-            if df.loc[i, "section"] == section and df.loc[i, "subject"] == subject
-        ) == subjects[subject]
+            if df.loc[i, "section"] == s and df.loc[i, "subject"] == subj
+        ) == subjects[subj]
 
 # ----------------------------
-# PENALTIES & REWARDS
+# PATTERN ENFORCEMENT (FAST)
 # ----------------------------
 
-# Vacant slots penalty
-vacant_penalty = lpSum(
-    (1 - y[(section, time)])
-    for section in sections
-    for time in timeslots
-)
+# pattern = 1 → (2 consecutive + 1 separate)
+# pattern = 0 → (MWF-style: 3 days)
+pattern = {}
 
-# Too many consecutive (>5)
-consecutive_penalties = []
+day_used = {}
 
-for section in sections:
-    for i in range(len(timeslots) - 5):
-        window = timeslots[i:i+6]
+for s in sections:
+    for subj in subjects:
 
-        p = LpVariable(f"consec_{section}_{i}", lowBound=0)
+        pattern[(s, subj)] = LpVariable(f"pattern_{s}_{subj}", cat="Binary")
 
-        model += p >= (
-            lpSum(y[(section, t)] for t in window) - 5
-        )
+        for d in days:
+            day_used[(s, subj, d)] = LpVariable(f"day_{s}_{subj}_{d}", cat="Binary")
 
-        consecutive_penalties.append(p)
+            slots = [t for t in timeslots if get_day(t) == d]
 
-# Reward consecutive same-subject sessions
-consecutive_rewards = []
-
-for section in sections:
-    for subject in subjects:
-        for t in timeslots[:-1]:
-            pair = LpVariable(f"pair_{section}_{subject}_{t}", cat="Binary")
-
-            model += pair <= lpSum(
+            model += day_used[(s, subj, d)] <= lpSum(
                 x[i] for i in x
-                if df.loc[i, "section"] == section
-                and df.loc[i, "subject"] == subject
-                and df.loc[i, "time"] == t
+                if df.loc[i, "section"] == s
+                and df.loc[i, "subject"] == subj
+                and df.loc[i, "time"] in slots
             )
 
-            model += pair <= lpSum(
-                x[i] for i in x
-                if df.loc[i, "section"] == section
-                and df.loc[i, "subject"] == subject
-                and df.loc[i, "time"] == t + 1
-            )
+        total_days = lpSum(day_used[(s, subj, d)] for d in days)
 
-            consecutive_rewards.append(pair)
+        # Enforce:
+        # pattern=1 → 2 days (2+1 structure)
+        # pattern=0 → 3 days (MWF)
+        model += total_days == 2 * pattern[(s, subj)] + 3 * (1 - pattern[(s, subj)])
 
 # ----------------------------
-# OBJECTIVE
+# OBJECTIVE (MINIMIZE GAPS)
 # ----------------------------
 
-model += (
-    15 * vacant_penalty
-    + 10 * lpSum(consecutive_penalties)
-    - 20 * lpSum(consecutive_rewards)
-)
+# Encourage compact schedules (fewer used slots)
+model += lpSum(x.values())
 
 # ----------------------------
-# SOLVE
+# SOLVE (FAST SETTINGS)
 # ----------------------------
 
-print("Solving...")
-model.solve()
+model.solve(PULP_CBC_CMD(msg=1, timeLimit=30))
+
 print("Status:", LpStatus[model.status])
 
 # ----------------------------
 # OUTPUT
 # ----------------------------
 
-days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+days_names = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+time_labels = ["8-9","9-10","10-11","11-12","12-1","1-2","2-3","3-4","4-5"]
 
-time_labels = [
-    "8-9", "9-10", "10-11", "11-12",
-    "12-1", "1-2", "2-3", "3-4", "4-5"
-]
-
-def decode_timeslot(t):
-    day_index = (t - 1) // 9
-    slot_index = (t - 1) % 9
-    return days[day_index], time_labels[slot_index]
+def decode(t):
+    return days_names[(t-1)//9], time_labels[(t-1)%9]
 
 schedule = []
 
@@ -229,37 +179,25 @@ for i in x:
 schedule_df = pd.DataFrame(schedule)
 
 # ----------------------------
-# EXCEL OUTPUT (5x9 per section)
+# EXCEL OUTPUT
 # ----------------------------
 
 with pd.ExcelWriter("final_schedule.xlsx", engine="openpyxl") as writer:
 
-    for section in sections:
+    for s in sections:
 
-        grid = pd.DataFrame(
-            "",
-            index=time_labels,
-            columns=["M", "Tu", "W", "Th", "F"]
-        )
+        grid = pd.DataFrame("", index=time_labels, columns=["M","Tu","W","Th","F"])
 
         for _, row in schedule_df.iterrows():
-            if row["section"] == section:
-                day, time_label = decode_timeslot(row["time"])
+            if row["section"] == s:
+                day, time_label = decode(row["time"])
 
-                day_map = {
-                    "Mon": "M",
-                    "Tue": "Tu",
-                    "Wed": "W",
-                    "Thu": "Th",
-                    "Fri": "F"
-                }
+                dmap = {"Mon":"M","Tue":"Tu","Wed":"W","Thu":"Th","Fri":"F"}
 
-                d = day_map[day]
-
-                grid.loc[time_label, d] = \
-                    f"{row['subject']} ({row['instructor']})"
+                grid.loc[time_label, dmap[day]] = \
+                    f"{row['subject']} ({row['instructor']} - {row['room']})"
 
         grid.index.name = "Time"
-        grid.to_excel(writer, sheet_name=section)
+        grid.to_excel(writer, sheet_name=s)
 
 print("Saved to final_schedule.xlsx")
