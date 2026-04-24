@@ -309,8 +309,59 @@ for section in sections:
                     var_name = f"y_lab_{section}_{subject}_{room}_{start_slot}"
                     y_lab[(section, subject, room, start_slot)] = LpVariable(var_name, cat='Binary')
 
+
+# ----------------------------
+# SLOT OCCUPANCY VARIABLES (CRITICAL FIX)
+# ----------------------------
+occupy = {}
+for sec in sections:
+    for slot in timeslots:
+        occupy[(sec, slot)] = LpVariable(f"occ_{sec}_{slot}", cat="Binary")
+        
 print("\nAdding constraints...")
 constraint_count = 0
+
+print("  SLOT exclusivity per section...")
+
+for sec in sections:
+    for slot in timeslots:
+
+        involved_vars = []
+
+        # -------------------------
+        # LECTURE PATTERNS
+        # -------------------------
+        for subject in lecture_subjects_in_section[sec]:
+            units = lecture_subjects[subject]
+            patterns = scheduling_patterns.get(units, [])
+
+            for p_idx, pattern in enumerate(patterns):
+                for room in lecture_rooms:
+                    key = (sec, subject, room, p_idx)
+                    x_var = x_lecture.get(key)
+
+                    if x_var is not None and slot in pattern:
+                        involved_vars.append(x_var)
+
+        # -------------------------
+        # LAB SLOTS
+        # -------------------------
+        for subject in lab_subjects_in_section[sec]:
+            for room in lab_rooms:
+                for start_slot in valid_lab_starts:
+                    key = (sec, subject, room, start_slot)
+                    y_var = y_lab.get(key)
+
+                    if y_var is not None:
+                        if slot in [start_slot, start_slot + 1, start_slot + 2]:
+                            involved_vars.append(y_var)
+
+        # -------------------------
+        # HARD CONSTRAINT: NO OVERLAP
+        # -------------------------
+        if involved_vars:
+            prob += lpSum(involved_vars) <= 1, f"slot_exclusive_{sec}_{slot}"
+            constraint_count += 1
 
 # CONSTRAINT 1: Each lecture subject assigned exactly once (HARD CONSTRAINT)
 print("  1. Each lecture subject exactly once...")
@@ -385,80 +436,7 @@ for room in lab_rooms:
             prob += lpSum(room_slot_vars) <= 1, f"lab_room_slot_{room}_{slot}"
             constraint_count += 1
 
-# CONSTRAINT 5: Section cannot have 2 lectures at same time
-print("  5. No section time conflict (lectures)...")
-for section in sections:
-    for slot in timeslots:
-        if slot in lunch_slots:
-            continue
-        
-        section_vars = []
-        for subject in lecture_subjects_in_section[section]:
-            units = lecture_subjects[subject]
-            patterns = scheduling_patterns.get(units, [])
-            
-            for p_idx, pattern in enumerate(patterns):
-                if slot in pattern:
-                    for room in lecture_rooms:
-                        key = (section, subject, room, p_idx)
-                        if key in x_lecture:
-                            section_vars.append(x_lecture[key])
-        
-        if section_vars:
-            prob += lpSum(section_vars) <= 1, f"lec_sec_time_{section}_{slot}"
-            constraint_count += 1
 
-# CONSTRAINT 6: Section cannot have 2 labs at same time
-print("  6. No section time conflict (labs)...")
-for section in sections:
-    for slot in timeslots:
-        section_vars = []
-        for subject in lab_subjects_in_section[section]:
-            for room in lab_rooms:
-                for start_slot in valid_lab_starts:
-                    three_slots = [start_slot, start_slot + 1, start_slot + 2]
-                    if slot in three_slots:
-                        key = (section, subject, room, start_slot)
-                        if key in y_lab:
-                            section_vars.append(y_lab[key])
-        
-        if section_vars:
-            prob += lpSum(section_vars) <= 1, f"lab_sec_time_{section}_{slot}"
-            constraint_count += 1
-
-# CONSTRAINT 7: Section cannot have lecture and lab at same time
-print("  7. No section lec+lab overlap...")
-for section in sections:
-    for slot in timeslots:
-        if slot in lunch_slots:
-            continue
-        
-        lec_vars = []
-        for subject in lecture_subjects_in_section[section]:
-            units = lecture_subjects[subject]
-            patterns = scheduling_patterns.get(units, [])
-            
-            for p_idx, pattern in enumerate(patterns):
-                if slot in pattern:
-                    for room in lecture_rooms:
-                        key = (section, subject, room, p_idx)
-                        if key in x_lecture:
-                            lec_vars.append(x_lecture[key])
-        
-        lab_vars = []
-        for subject in lab_subjects_in_section[section]:
-            for room in lab_rooms:
-                for start_slot in valid_lab_starts:
-                    three_slots = [start_slot, start_slot + 1, start_slot + 2]
-                    if slot in three_slots:
-                        key = (section, subject, room, start_slot)
-                        if key in y_lab:
-                            lab_vars.append(y_lab[key])
-        
-        all_vars = lec_vars + lab_vars
-        if all_vars:
-            prob += lpSum(all_vars) <= 1, f"mixed_conflict_{section}_{slot}"
-            constraint_count += 1
 
 print(f"  Total constraints: {constraint_count}")
 
