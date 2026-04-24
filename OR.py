@@ -6,11 +6,15 @@ from openpyxl.styles import PatternFill
 # ----------------------------
 # DATA
 # ----------------------------
-lecture_rooms = ["R100A", "R100B", "R100C"]
-lab_rooms = ["Lab1", "Lab2"]
+lecture_rooms = ["R100A", "R100B", "R100C", "R100D", "R100E", "R100F"]
+lab_rooms = ["Lab1", "Lab2", "Lab3", "Lab4", "Lab5", "Lab6", "Hyflex1", "Hyflex2"]
 timeslots = list(range(1, 46))  # 5 days x 9
 sections = [
-    "CS1A", "IT1A", "IT1B", "IT1C",
+    "CS1A", "CS1B",
+    "CS2A", "CS2B",
+    "CS3A", "CS3B",
+    "CS4A", "CS4B",
+    "IT1A", "IT1B", "IT1C",
     "IT2A", "IT2B", "IT2C",
     "IT3A", "IT3B", "IT3C",
     "IT4A", "IT4B", "IT4C"
@@ -22,17 +26,23 @@ sections = [
 # Also removed "Understanding the Self" duplicate and kept one copy.
 lecture_subjects = {
     # CS subjects
-    "Computer Programming I": 2,
-    "Linear Algebra": 3,
-    "Software Engineering": 2,
-    "Operations Research": 3,
-    "Automata Theory": 3,
-    "Distributed Systems": 2,
-    "Information Assurance": 2,
-    "Programming Languages": 3,
+    "Computer Programming 1": 2,
+    "Computer Science Fundamentals": 2,
+    "Data Structures": 2,
+    "Digital Design": 2,
+    "Database Systems": 2,
+    "Discrete Structures": 2,
+    "Operating Systems": 2,
+    "System Analysis and Design": 2,
+    "Computer Networks": 2,
+    "Artificial Intelligence": 2,
+    "Programming Languages": 2,
+    "Modelling and Simulation": 3,
+    "Special Topics": 3,
+    "Thesis Writing I": 3,
+    "Human Computer Interaction": 2,
     # IT subjects
     "Introduction to Computing": 2,
-    "Computer Programming 1": 2,
     "Science, Technology, and Society": 3,
     "Understanding the Self": 3,          # kept once (was duplicated)
     "Reading Visual Art": 3,
@@ -61,19 +71,21 @@ lecture_subjects = {
 }
 
 lab_subjects = {
-    "Computer Programming I Lab": 1,
+    "Computer Programming 1 Lab": 1,
     "Computer Science Fundamentals Lab": 1,
     "Data Structures Lab": 1,
     "Digital Design Lab": 1,
     "Database Systems Lab": 1,
     "Discrete Structures Lab": 1,
-    "Distributed Systems Lab": 1,
-    "Software Engineering Lab": 1,
-    "Information Assurance Lab": 1,
     "Operating System Lab": 1,
+    "System Analysis and Design Lab": 1,
+    "Computer Networks Lab": 1,
+    "Artificial Intelligence Lab": 1,
+    "Programming Languages Lab": 1,
+    "Human Computer Interaction Lab": 1,
+    "Compiler Design Lab": 1,
     # IT subjects
     "Introduction to Computing Lab": 1,
-    "Computer Programming 1 Lab": 1,
     "Introduction to Game Development Lab": 1,
     "Computer Networks 1 Lab": 1,
     "Platform Technologies Lab": 1,
@@ -93,47 +105,102 @@ lab_subjects = {
 # Also note: "Computer Science Fundamentals" was referenced for CS4A but
 # it's not in lecture_subjects — kept only valid subjects.
 section_subjects = {
-    "CS1A": ["Understanding the Self"],
-    # CS4A removed (not in sections list; add back to sections if needed)
-    "IT1A": [
-        "Introduction to Computing", "Computer Programming 1",
+    "CS1A": [
+        "Computer Science Fundamentals", "Computer Programming 1",
         "Science, Technology, and Society", "Understanding the Self",
-        "Reading Visual Art", "Movement Competency Training (MCT)",
-        "CWTS 1/ROTC 1",
-        "Platform Technologies Lab", "Computer Networks 1 Lab",
+        "Intensive English", "Reading Visual Arts",
+
+        "Computer Science Fundamentals Lab",
+        "Computer Programming 1 Lab",
+    ],
+    "CS1B": [
+        "Computer Science Fundamentals", "Computer Programming 1",
+        "Science, Technology, and Society", "Understanding the Self",
+        "Intensive English", "Reading Visual Arts",
+
+        "Computer Science Fundamentals Lab",
+        "Computer Programming 1 Lab",
+    ],
+    "CS2A": [
+        "Data Structures", "Digital Design", "Database Systems",
+        "Discrete Structures", "Ethics", "Environmental Science",
+
+        "Data Structures Lab", "Digital Design Lab",
+        "Database Systems Lab", "Discrete Structures Lab",
+    ],
+    "CS2B": [
+        "Data Structures", "Digital Design", "Database Systems",
+        "Discrete Structures", "Ethics", "Environmental Science",
+
+        "Data Structures Lab", "Digital Design Lab",
+        "Database Systems Lab", "Discrete Structures Lab",
+    ],
+    "CS3A": [
+        "Operating Systems", "Systems Analysis and Design",
+        "Computer Networks", "Artificial Intelligence",
+        "Life and Works of Rizal", "The Entrepreneurial Mind",
+
+        "Operating Systems Lab", "Systems Analysis and Design Lab",
+        "Computer Networks Lab", "Artificial Intelligence Lab",
+    ],
+    "CS3B": [
+        "Operating Systems", "Systems Analysis and Design",
+        "Computer Networks", "Artificial Intelligence",
+        "Life and Works of Rizal", "The Entrepreneurial Mind",
+
+        "Operating Systems Lab", "Systems Analysis and Design Lab",
+        "Computer Networks Lab", "Artificial Intelligence Lab",
+    ],
+    "CS4A": [
+        "Programming Languages", "Human Computer Interaction",
+        "Special Topics", "Thesis Writing I",
+
+        "Programming Languages Lab",
+        "Human Computer Interaction Lab",
+    ],
+    "CS4B": [
+        "Programming Languages", "Human Computer Interaction",
+        "Special Topics", "Thesis Writing I",
+
+        "Programming Languages Lab",
+        "Human Computer Interaction Lab",
+    ],
+    "IT1A": [
+        "Introduction to Computing", "Computer Programming I",
+        "Science, Technology, and Society", "Understanding the Self",
+        "Reading Visual Art",
+        "Platform Technologies Lab", "Computer Programming I Lab",
     ],
     "IT1B": [
-        "Introduction to Computing", "Computer Programming 1",
+        "Introduction to Computing", "Computer Programming I",
         "Science, Technology, and Society", "Understanding the Self",
-        "Reading Visual Art", "Movement Competency Training (MCT)",
-        "CWTS 1/ROTC 1",
-        "Platform Technologies Lab", "Computer Networks 1 Lab",
+        "Reading Visual Art",
+        "Platform Technologies Lab", "Computer Programming I Lab",
     ],
     "IT1C": [
-        "Introduction to Computing", "Computer Programming 1",
+        "Introduction to Computing", "Computer Programming I",
         "Science, Technology, and Society", "Understanding the Self",
-        "Reading Visual Art", "Movement Competency Training (MCT)",
-        "CWTS 1/ROTC 1",
-        "Platform Technologies Lab", "Computer Networks 1 Lab",
+        "Reading Visual Art",
+        "Platform Technologies Lab", "Computer Networks I Lab",
     ],
     "IT2A": [
         "Database Systems", "Operating System", "Data Structures & Algorithms",
         "Introduction to Game Development", "Ethics",
-        "Fundamentals of Accounting for IT", "Environmental Science", "Dance",
+        "Fundamentals of Accounting for IT", "Environmental Science",
         "Database Systems Lab", "Operating System Lab",
         "Data Structures Lab", "Introduction to Game Development Lab",
     ],
     "IT2B": [
         "Database Systems", "Operating System", "Data Structures & Algorithms",
         "Introduction to Game Development", "Ethics",
-        "Fundamentals of Accounting for IT", "Environmental Science", "Dance",
+        "Fundamentals of Accounting for IT", "Environmental Science",
         "Database Systems Lab", "Operating System Lab",
         "Data Structures Lab", "Introduction to Game Development Lab",
     ],
     "IT2C": [
         "Database Systems", "Operating System", "Data Structures & Algorithms",
         "Introduction to Game Development", "Ethics",
-        "Fundamentals of Accounting for IT", "Environmental Science", "Dance",
+        "Fundamentals of Accounting for IT", "Environmental Science",
         "Database Systems Lab", "Operating System Lab",
         "Data Structures Lab", "Introduction to Game Development Lab",
     ],
@@ -184,13 +251,7 @@ section_subjects = {
 # Lab sessions occupy 3 consecutive timeslots. The only requirement is that
 # all 3 slots fit within the same day (p+2 <= 9 => p <= 7).
 # Labs are allowed to span lunch slots.
-valid_lab_starts = []
-for d in range(5):
-    base = d * 9
-    for p in range(1, 8):  # positions 1..7 all fit within the day
-        valid_lab_starts.append(base + p)
-
-lunch_slots = [5, 14, 23, 32, 41]
+valid_lab_starts = [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43]
 
 # Precompute subjects available per section to avoid repeated lookups.
 lecture_subjects_in_section = {
@@ -205,263 +266,142 @@ lab_subjects_in_section = {
 # ----------------------------
 # MODEL
 # ----------------------------
-model = LpProblem("Scheduling", LpMinimize)
-
+model = LpProblem("Optimized_Scheduling", LpMinimize)
+valid_lecture_slots = [t for t in timeslots if t not in [5,14,23,32,41]]  # skip lunch
+valid_lab_starts = [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43]
+x = LpVariable.dicts("Lec", [
+    (r,t,sec,sub)
+    for sec in section_subjects
+    for sub in lecture_subjects_in_section[sec]
+    for r in lecture_rooms
+    for t in valid_lecture_slots
+], cat="Binary")
+z = LpVariable.dicts("Lab", [
+    (r,t,sec,sub)
+    for sec in section_subjects
+    for sub in lab_subjects_in_section[sec]
+    for r in lab_rooms
+    for t in valid_lab_starts
+], cat="Binary")
 # ----------------------------
-# VARIABLES
+# INDEXING HELPERS
 # ----------------------------
-x = LpVariable.dicts("Lecture",
-    [(r, t, sec, sub)
-     for r in lecture_rooms
-     for t in timeslots
-     for sec in sections
-     for sub in lecture_subjects_in_section[sec]],
-    cat="Binary"
-)
-
-z = LpVariable.dicts("Lab",
-    [(r, t, sec, sub)
-     for r in lab_rooms
-     for t in valid_lab_starts
-     for sec in sections
-     for sub in lab_subjects_in_section[sec]],
-    cat="Binary"
-)
-
-y = LpVariable.dicts("Occupied",
-    [(sec, t) for sec in sections for t in timeslots],
-    cat="Binary"
-)
-
-# ----------------------------
-# INDEXING
-# ----------------------------
-x_sec_t   = defaultdict(list)
-x_room_t  = defaultdict(list)
-x_sub_t   = defaultdict(list)
-x_sec_sub = defaultdict(list)
-x_sec_sub_t = defaultdict(list)
-x_room_sub = defaultdict(list)
-
-for (r, t, sec, sub) in x:
-    var = x[(r, t, sec, sub)]
-    x_sec_t[(sec, t)].append(var)
-    x_room_t[(r, t)].append(var)
-    x_sub_t[(sub, t)].append(var)
-    x_sec_sub[(sec, sub)].append(var)
-    x_sec_sub_t[(sec, sub, t)].append(var)
-    x_room_sub[(r, sec, sub)].append(var)
-
-z_sec_t   = defaultdict(list)
-z_room_t  = defaultdict(list)
-z_sub_t   = defaultdict(list)
-z_sec_sub = defaultdict(list)
-
-for (r, t, sec, sub) in z:
-    var = z[(r, t, sec, sub)]
+x_sec_t = defaultdict(list)
+x_room_t = defaultdict(list)
+z_sec_t = defaultdict(list)
+z_room_t = defaultdict(list)
+for (r,t,sec,sub),var in x.items():
+    x_sec_t[(sec,t)].append(var)
+    x_room_t[(r,t)].append(var)
+for (r,t,sec,sub),var in z.items():
     for dt in range(3):
-        z_sec_t[(sec, t + dt)].append(var)
-        z_room_t[(r, t + dt)].append(var)
-        z_sub_t[(sub, t + dt)].append(var)
-    z_sec_sub[(sec, sub)].append(var)
-
+        z_sec_t[(sec,t+dt)].append(var)
+        z_room_t[(r,t+dt)].append(var)
+def occ(sec,t):  # total class count for a section/time
+    return lpSum(x_sec_t[(sec,t)]) + lpSum(z_sec_t[(sec,t)])
 # ----------------------------
-# CONSTRAINTS
+# HARD CONSTRAINTS
 # ----------------------------
-
-# Link occupied slots
-for sec in sections:
-    for t in timeslots:
-        model += y[(sec, t)] == (
-            lpSum(x_sec_t[(sec, t)]) +
-            lpSum(z_sec_t[(sec, t)])
-        )
-
-# Room capacity: at most 1 class per room per timeslot
+# One class per room per slot
 for r in lecture_rooms:
-    for t in timeslots:
-        model += lpSum(x_room_t[(r, t)]) <= 1
-
+    for t in valid_lecture_slots:
+        model += lpSum(x_room_t[(r,t)]) <= 1
 for r in lab_rooms:
     for t in timeslots:
-        model += lpSum(z_room_t[(r, t)]) <= 1
-
-# Section cannot be in two places at once
-for sec in sections:
+        model += lpSum(z_room_t[(r,t)]) <= 1
+# One class per section per slot
+for sec in section_subjects:
     for t in timeslots:
-        model += (
-            lpSum(x_sec_t[(sec, t)]) +
-            lpSum(z_sec_t[(sec, t)])
-        ) <= 1
-
-# No 2 sections same subject at the same time
-for sub in lecture_subjects:
-    for t in timeslots:
-        model += lpSum(x_sub_t[(sub, t)]) <= 1
-
-for sub in lab_subjects:
-    for t in timeslots:
-        model += lpSum(z_sub_t[(sub, t)]) <= 1
-
-# BUG FIX 4 (MAIN FIX): Required units constraint.
-# Each lecture subject with N units must appear exactly N times per section.
-# Previously this worked in theory but was broken by the duplicate-key bug
-# in lecture_subjects (which caused some subjects to have wrong unit counts)
-# and by sections missing from section_subjects (KeyError).
-# Now that those are fixed, this constraint correctly enforces repetition.
-for sec in sections:
-    for sub in lecture_subjects:
-        if sub in section_subjects.get(sec, []):
-            required = lecture_subjects[sub]
-            model += lpSum(x_sec_sub[(sec, sub)]) == required
-
-    for sub in lab_subjects:
-        if sub in section_subjects.get(sec, []):
-            required = lab_subjects[sub]
-            model += lpSum(z_sec_sub[(sec, sub)]) == required
-
-# Lunch break enforced
-for sec in sections:
-    for t in lunch_slots:
-        model += y[(sec, t)] == 0
-
-# ----------------------------
-# OBJECTIVE FUNCTION
-# ----------------------------
-
-# 1. Minimize vacant (non-lunch, non-occupied) time
-vacant_penalty = lpSum(
-    1 - y[(sec, t)]
-    for sec in sections
-    for t in timeslots
-    if t not in lunch_slots
-)
-
-# 2. Balance daily load
-avg = sum(lecture_subjects[s] for sec in sections
-          for s in section_subjects.get(sec, [])
-          if s in lecture_subjects) / (len(sections) * 5)
-
-balance_penalty = []
-for sec in sections:
-    for d in range(5):
-        day_slots = range(1 + d * 9, 10 + d * 9)
-        load = lpSum(y[(sec, t)] for t in day_slots if t not in lunch_slots)
-        p = LpVariable(f"balance_{sec}_{d}", lowBound=0)
-        model += p >= load - avg
-        model += p >= avg - load
-        balance_penalty.append(p)
-
-# 3. Same timeslot across days (consistency for multi-unit lectures)
-time_penalty = []
-for sec in sections:
+        model += occ(sec,t) <= 1
+# Unit-hour requirements
+for sec in section_subjects:
     for sub in lecture_subjects_in_section[sec]:
-        for d in range(4):
-            for k in range(1, 10):
-                if k == 5:
-                    continue
-                t1 = d * 9 + k
-                t2 = (d + 1) * 9 + k
-                p = LpVariable(f"time_{sec}_{sub}_{d}_{k}", lowBound=0)
-                model += p >= lpSum(x_sec_sub_t[(sec, sub, t1)]) - lpSum(x_sec_sub_t[(sec, sub, t2)])
-                model += p >= lpSum(x_sec_sub_t[(sec, sub, t2)]) - lpSum(x_sec_sub_t[(sec, sub, t1)])
-                time_penalty.append(p)
-
-# 4. Room switching penalty (prefer same room for all sessions of a subject)
+        model += lpSum(x[(r,t,sec,sub)] for r in lecture_rooms for t in valid_lecture_slots) == lecture_subjects[sub]
+    for sub in lab_subjects_in_section[sec]:
+        model += lpSum(z[(r,t,sec,sub)] for r in lab_rooms for t in valid_lab_starts) == lab_subjects[sub]
+# ----------------------------
+# PREFER CONSISTENT TIMESLOT ACROSS DAYS
+# ----------------------------
+def day_of(t): return (t-1)//9
+def slot_of(t): return ((t-1)%9)+1
+same_time_penalty = []
+for sec in section_subjects:
+    for sub in lecture_subjects_in_section[sec]:
+        # For each possible slot position, activate binary if used
+        use_slot = {}
+        for s in range(1,10):
+            v = LpVariable(f"use_{sec}_{sub}_{s}", cat="Binary")
+            model += v >= lpSum(
+                x[(r,t,sec,sub)] for (r,t,sec2,sub2) in x
+                if sec2 == sec and sub2 == sub and slot_of(t)==s
+            ) / max(1,lecture_subjects[sub])
+            use_slot[s]=v
+        # Penalize multiple slot positions
+        same_time_penalty.append(lpSum(use_slot.values()) - 1)
+# ----------------------------
+# ROOM CONSISTENCY PENALTY
+# ----------------------------
 room_penalty = []
-for sec in sections:
+for sec in section_subjects:
     for sub in lecture_subjects_in_section[sec]:
-        for i, r1 in enumerate(lecture_rooms):
-            for r2 in lecture_rooms[i + 1:]:
-                p = LpVariable(f"room_{sec}_{sub}_{r1}_{r2}", lowBound=0)
-                model += p >= lpSum(x_room_sub[(r1, sec, sub)]) + lpSum(x_room_sub[(r2, sec, sub)]) - 1
-                room_penalty.append(p)
-
-# FINAL OBJECTIVE
+        use_room = {}
+        for r in lecture_rooms:
+            v = LpVariable(f"usedroom_{sec}_{sub}_{r}", cat="Binary")
+            for (r2,t,sec2,sub2),var in x.items():
+                if sec2==sec and sub2==sub and r2==r:
+                    model += var <= v
+            use_room[r]=v
+        room_penalty.append(lpSum(use_room.values()) - 1)
+#Penalty for vacant periods
+vacant_penalty = lpSum(1 - occ(sec,t) for sec in section_subjects for t in timeslots)
+# ----------------------------
+# OBJECTIVE
+# ----------------------------
 model += (
-    20 * vacant_penalty +
-    10 * lpSum(balance_penalty) +
-    5  * lpSum(time_penalty) +
-    8  * lpSum(room_penalty)
+    15*vacant_penalty + #minor penalty for vacant periods
+    120*lpSum(same_time_penalty) +  #encourage same timeslot usage like 8-9 M, 8-9T etc.
+    80*lpSum(room_penalty) #stronger room consistency, using 100D for the same subject
 )
-
 # ----------------------------
 # SOLVE
 # ----------------------------
-print("Solving with CBC (120s limit, 4 threads)...")
-model.solve(PULP_CBC_CMD(msg=True, timeLimit=120, threads=4))
-print("Status:", LpStatus[model.status])
-
+print("Solving model...")
+model.solve(PULP_CBC_CMD(msg=1, timeLimit=120, threads=6))
+print("Final status:", LpStatus[model.status])
 # ----------------------------
 # BUILD SCHEDULE
 # ----------------------------
-schedule = []
-
-for (r, t, sec, sub) in x:
-    if value(x[(r, t, sec, sub)]) == 1:
-        schedule.append([sec, sub, r, t, "Lecture"])
-
-for (r, t, sec, sub) in z:
-    if value(z[(r, t, sec, sub)]) == 1:
+schedule=[]
+days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+times = ["8-9","9-10","10-11","11-12","12-1","1-2","2-3","3-4","4-5"]
+for (r,t,sec,sub),var in x.items():
+    if value(var)==1:
+        schedule.append([sec,sub,r,t,"Lecture"])
+for (r,t,sec,sub),var in z.items():
+    if value(var)==1:
         for dt in range(3):
-            schedule.append([sec, sub, r, t + dt, "Lab"])
-
-schedule_df = pd.DataFrame(
-    schedule,
-    columns=["Section", "Subject", "Room", "Time", "Type"]
-)
-
-# ----------------------------
-# VERIFICATION: print unit counts per section/subject
-# ----------------------------
-print("\n--- Unit Count Verification ---")
-for sec in sections:
-    sec_df = schedule_df[schedule_df["Section"] == sec]
-    for sub in section_subjects.get(sec, []):
-        is_lab = sub in lab_subjects
-        count = len(sec_df[sec_df["Subject"] == sub])
-        expected = lab_subjects[sub] * 3 if is_lab else lecture_subjects[sub]
-        status = "✅" if count == expected else "❌"
-        if count != expected:
-            print(f"  {status} {sec} | {sub}: got {count} slots, expected {expected}")
-
-# ----------------------------
-# TIME DECODER
-# ----------------------------
-days  = ["Mon", "Tue", "Wed", "Thu", "Fri"]
-times = ["8-9", "9-10", "10-11", "11-12", "12-1", "1-2", "2-3", "3-4", "4-5"]
-
-def decode(t):
-    return days[(t - 1) // 9], times[(t - 1) % 9]
-
-# ----------------------------
-# EXCEL OUTPUT
-# ----------------------------
-with pd.ExcelWriter("Full_Timetable.xlsx", engine="openpyxl") as writer:
-    for sec in sections:
-        grid    = {time: {day: "" for day in days} for time in times}
-        type_map = {}
-
-        for _, row in schedule_df.iterrows():
-            if row["Section"] == sec:
-                d, t = decode(row["Time"])
-                grid[t][d] = f"{row['Subject']} ({row['Room']})"
-                type_map[(t, d)] = row["Type"]
-
-        df_grid = pd.DataFrame(grid).T
-        df_grid.to_excel(writer, sheet_name=sec)
-
-        ws = writer.sheets[sec]
+            schedule.append([sec,sub,r,t+dt,"Lab"])
+schedule_df=pd.DataFrame(schedule,columns=["Section","Subject","Room","Time","Type"])
+def decode(t): return days[(t-1)//9], times[(t-1)%9]
+with pd.ExcelWriter("Full_Timetable.xlsx",engine="openpyxl") as writer:
+    for sec in section_subjects:
+        grid={time:{day:"" for day in days} for time in times}
+        type_map={}
+        for _,row in schedule_df.iterrows():
+            if row["Section"]==sec:
+                d,t_=decode(row["Time"])
+                grid[t_][d]=f"{row['Subject']} ({row['Room']})"
+                type_map[(t_,d)]=row["Type"]
+        df=pd.DataFrame(grid).T
+        df.to_excel(writer,sheet_name=sec)
+        ws=writer.sheets[sec]
         for col in ws.columns:
-            ws.column_dimensions[col[0].column_letter].width = 30
-
-        lecture_fill = PatternFill(start_color="ADD8E6", fill_type="solid")
-        lab_fill     = PatternFill(start_color="90EE90", fill_type="solid")
-
-        for i, time in enumerate(times, start=2):
-            for j, day in enumerate(days, start=2):
-                cell = ws.cell(row=i, column=j)
-                if (time, day) in type_map:
-                    cell.fill = lecture_fill if type_map[(time, day)] == "Lecture" else lab_fill
-
-print("\n✅ Saved: Full_Timetable.xlsx")
+            ws.column_dimensions[col[0].column_letter].width=30
+        lec_fill=PatternFill(start_color="ADD8E6",fill_type="solid")
+        lab_fill=PatternFill(start_color="90EE90",fill_type="solid")
+        for i,time in enumerate(times,start=2):
+            for j,day in enumerate(days,start=2):
+                cell=ws.cell(row=i,column=j)
+                if (time,day) in type_map:
+                    cell.fill=lec_fill if type_map[(time,day)]=="Lecture" else lab_fill
+print("✅ Saved: Full_Timetable.xlsx")
