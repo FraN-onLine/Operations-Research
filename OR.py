@@ -6,20 +6,19 @@ from openpyxl.styles import PatternFill, Alignment, Border, Side, Font
 from openpyxl.utils import get_column_letter
 import os
 
-# ----------------------------
-# DATA
-# ----------------------------
+# #ror data: rooms, time slots, days
 lecture_rooms = ["R100A", "R100B", "R100C", "R100D", "R100E", "R100F"]
 lab_rooms = ["Lab1", "Lab2", "Lab3", "Lab4", "Lab5", "Lab6", "Hyflex1", "Hyflex2"]
-timeslots = list(range(1, 46))  # 5 days x 9
+timeslots = list(range(1, 46))  # 45 slots: 5 days × 9 hours
 lunch_slots = [5, 14, 23, 32, 41]
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 times = ["8-9","9-10","10-11","11-12","12-1","1-2","2-3","3-4","4-5"]
+
+# #ror scheduling patterns: 3-unit (MWF, MTTh, etc) & 2-unit (MW, TTh, WF)
 scheduling_patterns = {
-    #for 3 Unit Subjects, the subjects can be allocated in any of these patterns
     3: [[1,19,37], [2,20,38], [3,21,39], [4,22,40], [5,23,41], [6,24,42], [7,25,43], [8,26,44], [9,27,45], #MWF
-        [1,10,19], [2,11,20], [3,12,21], [4,13,22], [5,14,23], [6,15,24], [7,16,25], [8,17,26], [9,18,27], #MThw
-        [10,19,28], [11,20,29], [12,21,30], [13,22,31], [14,23,32], [15,24,33], [16,25,34], [17,26,35], [18,27,36], #TThw
+        [1,10,19], [2,11,20], [3,12,21], [4,13,22], [5,14,23], [6,15,24], [7,16,25], [8,17,26], [9,18,27], #MTTh
+        [10,19,28], [11,20,29], [12,21,30], [13,22,31], [14,23,32], [15,24,33], [16,25,34], [17,26,35], [18,27,36], #TTTh
         [19,28,37], [20,29,38], [21,30,39], [22,31,40], [23,32,41], [24,33,42], [25,34,43], [26,35,44], [27,36,45] #WThF
     ],
     2: [[1,19], [2,20], [3,21], [4,22], [5,23], [6,24], [7,25], [8,26], [9,27], #MW
@@ -27,8 +26,9 @@ scheduling_patterns = {
         [19,37], [20,38], [21,39], [22,40], [23,41], [24,42], [25,43], [26,44], [27,45] #WF
     ]
 }
-#Time slots where Laboratories can start occupying 3 consecutive slots
+# #ror lab slots: 3 consecutive hours, can start at these times
 valid_lab_starts = [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43]
+# #ror all sections across CS & IT programs
 sections = [
     "CS1A", "CS1B",
     "CS2A", "CS2B",
@@ -40,8 +40,8 @@ sections = [
     "IT4A", "IT4B", "IT4C"
 ]
 
+# #ror lecture subjects with unit counts
 lecture_subjects = {
-    # CS subjects
     "Computer Programming 1": 2,
     "Computer Science Fundamentals": 2,
     "Data Structures": 2,
@@ -57,7 +57,7 @@ lecture_subjects = {
     "Special Topics": 3,
     "Thesis Writing I": 3,
     "Human Computer Interaction": 2,
-    # IT subjects
+
     "Introduction to Computing": 2,
     "Science, Technology, and Society": 3,
     "Understanding the Self": 3,          # kept once (was duplicated)
@@ -86,6 +86,7 @@ lecture_subjects = {
     "Capstone Project Writing": 2,
 }
 
+# #ror lab subjects (1 unit each)
 lab_subjects = {
     "Computer Programming 1 Lab": 1,
     "Computer Science Fundamentals Lab": 1,
@@ -115,7 +116,7 @@ lab_subjects = {
     "Capstone Project Writing Lab": 1,
 }
 
-#these are obtained from the curriculum of the univ
+# #ror curriculum subjects per section (from official curriculum)
 section_subjects = {
     "CS1A": [
         "Computer Science Fundamentals", "Computer Programming 1",
@@ -250,8 +251,7 @@ section_subjects = {
     ],
 }
 
-
-#split lecture and lab
+# #ror separate lectures from labs by section
 lecture_subjects_in_section = {
     sec: [sub for sub in section_subjects.get(sec, []) if sub in lecture_subjects]
     for sec in sections
@@ -261,12 +261,12 @@ lab_subjects_in_section = {
     for sec in sections
 }
 
-#Set helper functions to get days and times from a slot
+# #ror helper functions for slot conversion
 def get_day_from_slot(slot):
-    return (slot - 1) // 9 #returns the index of which day it is (0-4)
+    return (slot - 1) // 9
 
 def get_time_from_slot(slot):
-    return (slot - 1) % 9 #returns the index of which time it is (0-8)
+    return (slot - 1) % 9
 
 #Model start
 print("Room Allocation Optimization for the First Semester 2026 - 2027 for CCIS Programs")
@@ -274,8 +274,7 @@ print("=" * 60)
 
 prob = LpProblem("RoomAllocation", LpMinimize)
 
-#Decision variables for LECTURES
-#x[sec][subject][room][pattern_idx] = 1 if this subject uses this pattern in this room
+# #ror decision variables: lecture assignments (section, subject, room, pattern)
 x_lecture = {}
 for section in sections:
     for subject in lecture_subjects_in_section[section]:
@@ -286,8 +285,7 @@ for section in sections:
                 var_name = f"x_lec_{section}_{subject}_{room}_{pattern_idx}"
                 x_lecture[(section, subject, room, pattern_idx)] = LpVariable(var_name, cat='Binary')
 
-#Decision variables for LABS
-#y[sec][subject][room][start_slot] = 1 if lab uses this room and start time
+# #ror decision variables: lab assignments (section, subject, room, start_slot)
 y_lab = {}
 for section in sections:
     for subject in lab_subjects_in_section[section]:
@@ -298,7 +296,7 @@ for section in sections:
                     var_name = f"y_lab_{section}_{subject}_{room}_{start_slot}"
                     y_lab[(section, subject, room, start_slot)] = LpVariable(var_name, cat='Binary')
 
-#if a section has a class in a slot, then it occupies that slot (for both lectures and labs)
+# #ror binary vars: track if section occupies a slot
 occupy = {}
 for sec in sections:
     for slot in timeslots:
@@ -307,7 +305,7 @@ for sec in sections:
 print("\nConstraints.")
 constraint_count = 0
 
-print("1. Section slot exclusivity (no overlapping classes for a section)")
+# #ror constraint 1: no overlapping classes per section
 
 for sec in sections:
     for slot in timeslots:
@@ -337,23 +335,21 @@ for sec in sections:
                         if slot in [start_slot, start_slot + 1, start_slot + 2]:
                             involved_vars.append(y_var)
 
-        #if any class can occupy this slot for this section, then the sum of those variables must be <= 1 to prevent overlaps
         if involved_vars:
             prob += lpSum(involved_vars) <= 1, f"slot_exclusive_{sec}_{slot}"
             constraint_count += 1
 
-#checks if a section has a class in a slot, then the occupy variable for that section and slot must be 1
+# #ror penalty vars: track dense class windows (penalize in objective)
 overload = {}
-
 for sec in sections:
     for day in range(5):
-        for start in range(9 - 5):  #windows of 6 hours
+        for start in range(4):  # 6-hour windows
             overload[(sec, day, start)] = LpVariable(
-                f"overload_{sec}_{day}_{start}", #if there are many classes in a 6-hour window for a section, the overload variable can be >0 and we will penalize that in the objective function to encourage better distribution of classes throughout the day
+                f"overload_{sec}_{day}_{start}",
                 cat="Binary"
             )
-            
-#evert subject must be assigned
+
+# #ror constraint 2: every lecture subject assigned exactly once
 print("2. Every subject must be assigned")
 for section in sections:
     for subject in lecture_subjects_in_section[section]:
@@ -383,7 +379,7 @@ for section in sections:
             prob += lpSum(subject_vars) == 1, f"lab_assign_{section}_{subject}"
             constraint_count += 1
 
-#no two rooms can have classes at the same time
+# #ror constraint 3: no lecture room double-booking
 print("3. No lecture room double-booking")
 for room in lecture_rooms:
     for slot in timeslots:
@@ -407,7 +403,7 @@ for room in lecture_rooms:
             prob += lpSum(room_slot_vars) <= 1, f"lec_room_slot_{room}_{slot}"
             constraint_count += 1
 
-#rooms cannot have more than 1 lab at the same time, considering that a lab occupies 3 consecutive slots
+# #ror constraint 4: no lab room double-booking
 print("4. No lab room double-booking")
 for room in lab_rooms:
     for slot in timeslots:
@@ -462,19 +458,104 @@ for sec in sections:
                                 if slot in [start_slot, start_slot + 1, start_slot + 2]:
                                     involved.append(y_var)
 
-            #overload triggers if many activities in window
             if involved:
                 prob += overload[(sec, day, start)] <= lpSum(involved)
 
 print(f"Total constraints: {constraint_count}")
 
-#OBJECTIVE FUNCTIONN
-print("\nOBJ FUNCTION: Minimize overload variables to encourage better distribution of classes throughout the day")
+# (penalty 1: room changes between consecutive classes in different rooms)
+print("6. Adding room consistency penalty")
 
+room_used = {}
+room_change_penalties = []
 
+# Penalize using many different rooms in the same section
+for sec in sections:
+
+    all_rooms = lecture_rooms + lab_rooms
+    section_subjects_all = section_subjects.get(sec, [])
+
+    for room in all_rooms:
+
+        room_used[(sec, room)] = LpVariable(
+            f"room_used_{sec}_{room}",
+            cat="Binary"
+        )
+
+        room_assignments = []
+
+        # lecture assignments in this room
+        for subject in lecture_subjects_in_section[sec]:
+            units = lecture_subjects[subject]
+            patterns = scheduling_patterns.get(units, [])
+
+            for p_idx in range(len(patterns)):
+                key = (sec, subject, room, p_idx)
+
+                if key in x_lecture:
+                    room_assignments.append(x_lecture[key])
+
+        # lab assignments in this room
+        for subject in lab_subjects_in_section[sec]:
+            for start_slot in valid_lab_starts:
+                key = (sec, subject, room, start_slot)
+
+                if key in y_lab:
+                    room_assignments.append(y_lab[key])
+
+        if room_assignments:
+            # if any subject uses this room, activate room_used
+            for var in room_assignments:
+                prob += room_used[(sec, room)] >= var
+
+            room_change_penalties.append(room_used[(sec, room)])
+
+# total rooms used by a section = penalty
+penalty_room_change = lpSum(room_change_penalties)
+
+# (penalty: multiple labs in same day for the same section)
+# FAST LAB SAME-DAY PENALTY
+print("7. Adding lab clustering penalty")
+
+lab_day_penalties = []
+
+for sec in sections:
+    for day in range(5):
+
+        labs_today = []
+
+        for subject in lab_subjects_in_section[sec]:
+            for room in lab_rooms:
+                for start_slot in valid_lab_starts:
+
+                    key = (sec, subject, room, start_slot)
+
+                    if key in y_lab:
+                        if get_day_from_slot(start_slot) == day:
+                            labs_today.append(y_lab[key])
+
+        if labs_today:
+            # penalty only if more than 1 lab on this day
+            overload_lab = LpVariable(
+                f"lab_overload_{sec}_{day}",
+                lowBound=0,
+                cat="Integer"
+            )
+
+            # if 1 lab = 0 penalty
+            # if 2 labs = 1 penalty
+            # if 3 labs = 2 penalty
+            prob += overload_lab >= lpSum(labs_today) - 1
+
+            lab_day_penalties.append(overload_lab)
+
+penalty_lab_same_day = lpSum(lab_day_penalties)
+
+print("\nOBJ FUNCTION: Minimize class density, room changes, and lab spread")
 penalty_consecutive = lpSum(overload.values())
+penalty_combined = penalty_consecutive + penalty_room_change + penalty_lab_same_day
 
-prob += penalty_consecutive, "Objective"
+prob += penalty_combined, "Objective"
 
 #solve
 print("\nSolving...")
@@ -486,14 +567,11 @@ if LpStatus[prob.status] != 'Optimal' and LpStatus[prob.status] != 'Feasible':
     print("ERROR: Could not find a feasible schedule!")
     exit(1)
 
-
-
-
-#excel helpers
+# extract solution and build schedule data
 print("\nExtracting solution...")
 schedule_data = []
 
-# Extract lectures
+#extract all lecture assignments
 for (section, subject, room, p_idx), var in x_lecture.items():
     if var.varValue == 1:
         units = lecture_subjects[subject]
@@ -515,13 +593,11 @@ for (section, subject, room, p_idx), var in x_lecture.items():
                 'TimeNum': time_idx
             })
 
-# Extract labs
+# #ror extract all lab assignments
 for (section, subject, room, start_slot), var in y_lab.items():
     if var.varValue == 1:
         three_slots = [start_slot, start_slot + 1, start_slot + 2]
         day = get_day_from_slot(start_slot)
-        time_idx = get_time_from_slot(start_slot)
-        end_time_idx = get_time_from_slot(start_slot + 2)
         
         for slot in three_slots:
             time_idx = get_time_from_slot(slot)
@@ -537,11 +613,7 @@ for (section, subject, room, start_slot), var in y_lab.items():
                 'TimeNum': time_idx
             })
 
-
-#These below are helpers in generating the excel output visualization and not part of the scheduling logic
-# ----------------------------
-# GENERATE EXCEL OUTPUT
-# ----------------------------
+# #ror build Excel output
 print("\nGenerating Excel timetable...")
 output_file = r"C:\Operations Research\Schedule_Output.xlsx"
 
@@ -556,15 +628,15 @@ if os.path.exists(output_file):
 df = pd.DataFrame(schedule_data)
 df_sorted = df.sort_values(['Section', 'DayNum', 'TimeNum']).drop(columns=['DayNum', 'TimeNum'])
 
-# Create workbook using openpyxl directly
+# #ror setup Excel workbook & styling
 print("Creating workbook...")
 wb = Workbook()
-wb.remove(wb.active)  # Remove default sheet
+wb.remove(wb.active)
 
-# Define colors and styles
-lecture_fill = PatternFill(start_color="B4C7E7", end_color="B4C7E7", fill_type="solid")  # Light blue
-lab_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Light green
-header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")  # Dark blue
+# #ror colors & formatting
+lecture_fill = PatternFill(start_color="B4C7E7", end_color="B4C7E7", fill_type="solid")
+lab_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
 header_font = Font(bold=True, color="FFFFFF", size=12)
 
 thin_border = Border(
@@ -574,7 +646,7 @@ thin_border = Border(
     bottom=Side(style='thin')
 )
 
-# Sheet 1: Master Schedule
+# #ror sheet 1: master schedule
 print("  Sheet 1: Master Schedule")
 ws_master = wb.create_sheet('Master Schedule', 0)
 headers = ['Section', 'Subject', 'Room', 'Type', 'Day', 'Time', 'Slot']
@@ -594,11 +666,11 @@ for row_idx, row in enumerate(df_sorted.itertuples(index=False), start=2):
         cell.border = thin_border
         cell.alignment = Alignment(wrap_text=True, vertical='top')
 
-# Auto-fit columns
+# #ror auto-fit column widths
 for col_idx, header in enumerate(headers, start=1):
     ws_master.column_dimensions[get_column_letter(col_idx)].width = 20
 
-# Sheet 2: Color-Coded Timetable (9x5 grid)
+# #ror sheet 2: 9x5 timetable grid
 print("  Sheet 2: Timetable")
 ws_timetable = wb.create_sheet('Timetable', 1)
 
@@ -607,7 +679,7 @@ ws_timetable.column_dimensions['A'].width = 12
 for col_idx in range(2, 7):
     ws_timetable.column_dimensions[get_column_letter(col_idx)].width = 25
 
-# Header row with days
+# #ror header row with days
 ws_timetable['A1'] = 'TIME'
 header_cell = ws_timetable['A1']
 header_cell.fill = header_fill
@@ -624,10 +696,9 @@ for day_idx, day in enumerate(days):
     cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
     cell.border = thin_border
 
-# Set header row height
 ws_timetable.row_dimensions[1].height = 25
 
-# Fill in time slots and classes
+# #ror fill time slots & classes
 for time_idx, time_slot in enumerate(times):
     row_num = time_idx + 2
     ws_timetable.row_dimensions[row_num].height = 60
@@ -640,7 +711,7 @@ for time_idx, time_slot in enumerate(times):
     time_cell.fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
     time_cell.font = Font(bold=True)
 
-    # For each day
+    # #ror for each day, populate cells
     for day_idx in range(5):
         col_letter = get_column_letter(day_idx + 2)
         slot = day_idx * 9 + time_idx + 1
@@ -653,12 +724,10 @@ for time_idx, time_slot in enumerate(times):
         cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
 
         if len(classes_at_slot) > 0:
-            # Determine if lecture or lab
             first_type = classes_at_slot.iloc[0]['Type']
             is_lab = first_type == 'Lab'
             cell.fill = lab_fill if is_lab else lecture_fill
 
-            # Build cell text
             cell_text = ""
             for idx, row in classes_at_slot.iterrows():
                 subject = row['Subject']
@@ -669,7 +738,7 @@ for time_idx, time_slot in enumerate(times):
             cell.value = cell_text.strip()
             cell.font = Font(size=9)
 
-# Sheet 3: By Section
+# #ror sheet 3: per section timetables
 print("  Creating section sheets...")
 for section in sorted(sections):
     section_df = df_sorted[df_sorted['Section'] == section].copy()
@@ -699,11 +768,11 @@ for section in sorted(sections):
                 cell.border = thin_border
                 cell.alignment = Alignment(wrap_text=True, vertical='top')
         
-        # Auto-fit columns
+        # #ror auto-fit columns
         for col_idx in range(1, len(headers) + 1):
             ws_section.column_dimensions[get_column_letter(col_idx)].width = 18
     
-    # Create section grid sheet (9x5 timetable)
+    # #ror per-section 9x5 grid timetable
     grid_sheet_name = f'{section} Timetable'[:31]
     ws_grid = wb.create_sheet(grid_sheet_name)
     
@@ -712,7 +781,7 @@ for section in sorted(sections):
     for col_idx in range(2, 7):
         ws_grid.column_dimensions[get_column_letter(col_idx)].width = 20
     
-    # Header row with days
+    # #ror header row with day names
     ws_grid['A1'] = 'TIME'
     header_cell = ws_grid['A1']
     header_cell.fill = header_fill
@@ -731,14 +800,14 @@ for section in sorted(sections):
     
     ws_grid.row_dimensions[1].height = 25
     
-    # Fill in time slots
+    # #ror fill time slots with classes
     section_schedule = df_sorted[df_sorted['Section'] == section].copy()
     
     for time_idx, time_slot in enumerate(times):
         row_num = time_idx + 2
         ws_grid.row_dimensions[row_num].height = 50
         
-        # Time column
+        # #ror time label column
         time_cell = ws_grid[f'A{row_num}']
         time_cell.value = time_slot
         time_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -751,7 +820,7 @@ for section in sorted(sections):
             col_letter = get_column_letter(day_idx + 2)
             slot = day_idx * 9 + time_idx + 1
             
-            # Find all classes at this slot for this section
+            # #ror fetch classes at this slot
             classes_at_slot = section_schedule[section_schedule['Slot'] == slot]
             
             cell = ws_grid[f'{col_letter}{row_num}']
@@ -775,7 +844,7 @@ for section in sorted(sections):
             else:
                 cell.fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
-# Sheet 4: Room Utilization
+# #ror sheet 4: room utilization summary
 print("  Sheet 4: Room Utilization")
 ws_rooms = wb.create_sheet('Room Utilization')
 room_util_data = []
@@ -805,7 +874,7 @@ for row_idx, row in enumerate(room_util_df.itertuples(index=False), start=2):
 for col_idx in range(1, len(headers) + 1):
     ws_rooms.column_dimensions[get_column_letter(col_idx)].width = 15
 
-# Sheet 5: Subject Coverage
+# #ror sheet 5: subject assignment coverage
 print("  Sheet 5: Subject Coverage")
 ws_coverage = wb.create_sheet('Subject Coverage')
 subject_coverage = []
@@ -834,7 +903,7 @@ for row_idx, row in enumerate(coverage_df.itertuples(index=False), start=2):
 for col_idx in range(1, len(headers) + 1):
     ws_coverage.column_dimensions[get_column_letter(col_idx)].width = 25
 
-# Save workbook
+# #ror save Excel file
 try:
     wb.save(output_file)
     print(f"✓ Excel file saved: {output_file}")
