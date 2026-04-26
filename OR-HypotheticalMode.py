@@ -7,15 +7,20 @@ from pulp import *
 
 rooms = ["R101", "R102"]
 timeslots = list(range(1, 46))  # 5 days x 9
-sections = ["CS3A", "CS3B"]
+sections = ["CS1A", "CS1B", "CS3A", "CS3B"]
 
-subjects = {
+#hours per week
+lecture_subjects = {
     "Linear Algebra": 3,
-    "Software Engineering": 3,
+    "Software Engineering": 2,
     "Operations Research": 3,
     "Automata Theory": 3,
-    "Information Assurance": 3,
-    "Distributed Systems": 3
+    "Information Assurance": 2,
+    "Distributed Systems": 2
+}
+
+lab_subjects = {
+    "Distributed Systems Lab": 1
 }
 
 instructors = {
@@ -28,11 +33,10 @@ instructors = {
     "Simon": ["Distributed Systems"]
 }
 
-# ----------------------------
-# PRE-ASSIGN INSTRUCTOR (FAST)
-# ----------------------------
-
-subject_instructor = {}
+#first sem
+section_subjects =  {
+    "CS1A": ["UTS", "Comprog", "Comprog Lab"]
+}
 
 for subject in subjects:
     for instructor, teachable in instructors.items():
