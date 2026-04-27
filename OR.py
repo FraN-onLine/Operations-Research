@@ -904,7 +904,7 @@ for section in sorted(sections):
         subject_coverage.append({
             'Section': section,
             'Subject': subject,
-            'Status': '✓ Scheduled' if assigned else '✗ NOT Scheduled'
+            'Status': 'Scheduled' if assigned else 'NOT Scheduled'
         })
 
 coverage_df = pd.DataFrame(subject_coverage)
@@ -926,9 +926,9 @@ for col_idx in range(1, len(headers) + 1):
 # #ror save Excel file
 try:
     wb.save(output_file)
-    print(f"✓ Excel file saved: {output_file}")
+    print(f"Excel file saved: {output_file}")
 except Exception as e:
-    print(f"✗ Error saving Excel file: {e}")
+    print(f"Error saving Excel file: {e}")
     print("  Trying alternative location...")
     alt_file = r"C:\Operations Research\Schedule_Output_alt.xlsx"
     try:
