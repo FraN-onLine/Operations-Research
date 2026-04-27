@@ -14,7 +14,7 @@ lunch_slots = [5, 14, 23, 32, 41]
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 times = ["8-9","9-10","10-11","11-12","12-1","1-2","2-3","3-4","4-5"]
 
-#scheduling patterns: 3-unit (MWF, MTTh, etc) & 2-unit (MW, TTh, WF)
+#scheduling patterns: 3-unit (MWF, MTTh, etc), 2-unit (MW, TTh, WF)
 scheduling_patterns = {
     3: [[1,19,37], [2,20,38], [3,21,39], [4,22,40], [5,23,41], [6,24,42], [7,25,43], [8,26,44], [9,27,45], #MWF
         [1,10,19], [2,11,20], [3,12,21], [4,13,22], [5,14,23], [6,15,24], [7,16,25], [8,17,26], [9,18,27], #MTTh
@@ -178,24 +178,25 @@ section_subjects = {
         "Introduction to Computing", "Computer Programming 1",
         "Science, Technology, and Society", "Understanding the Self",
         "Reading Visual Art",
-        "Platform Technologies Lab", "Computer Programming 1 Lab",
+        "Introduction to Computing Lab", "Computer Programming 1 Lab",
     ],
     "IT1B": [
         "Introduction to Computing", "Computer Programming 1",
         "Science, Technology, and Society", "Understanding the Self",
         "Reading Visual Art",
-        "Platform Technologies Lab", "Computer Programming 1 Lab",
+        "Introduction to Computing Lab", "Computer Programming 1 Lab",
     ],
     "IT1C": [
         "Introduction to Computing", "Computer Programming 1",
         "Science, Technology, and Society", "Understanding the Self",
         "Reading Visual Art",
-        "Platform Technologies Lab", "Computer Networks 1 Lab",
+        "Introduction to Computing Lab", "Computer Programming 1 Lab",
     ],
     "IT2A": [
         "Database Systems", "Operating System", "Data Structures & Algorithms",
         "Introduction to Game Development", "Ethics",
         "Fundamentals of Accounting for IT", "Environmental Science",
+        
         "Database Systems Lab", "Operating System Lab",
         "Data Structures Lab", "Introduction to Game Development Lab",
     ],
@@ -203,6 +204,7 @@ section_subjects = {
         "Database Systems", "Operating System", "Data Structures & Algorithms",
         "Introduction to Game Development", "Ethics",
         "Fundamentals of Accounting for IT", "Environmental Science",
+        
         "Database Systems Lab", "Operating System Lab",
         "Data Structures Lab", "Introduction to Game Development Lab",
     ],
@@ -210,6 +212,7 @@ section_subjects = {
         "Database Systems", "Operating System", "Data Structures & Algorithms",
         "Introduction to Game Development", "Ethics",
         "Fundamentals of Accounting for IT", "Environmental Science",
+        
         "Database Systems Lab", "Operating System Lab",
         "Data Structures Lab", "Introduction to Game Development Lab",
     ],
@@ -217,35 +220,41 @@ section_subjects = {
         "Computer Networks 1", "Platform Technologies", "Data Analytics",
         "Information and Project Management", "System Administration & Maintenance",
         "Fundamentals of Business Analytics", "Life and Works of Rizal",
+        
         "Computer Networks 1 Lab", "Platform Technologies Lab", "Information and Project Management Lab", 
     ],
     "IT3B": [
         "Computer Networks 1", "Platform Technologies", "Data Analytics",
         "Information and Project Management", "System Administration & Maintenance",
         "Fundamentals of Business Analytics", "Life and Works of Rizal",
+        
         "Computer Networks 1 Lab", "Platform Technologies Lab", "Information and Project Management Lab",
     ],
     "IT3C": [
         "Computer Networks 1", "Platform Technologies", "Data Analytics",
         "Information and Project Management", "System Administration & Maintenance",
         "Fundamentals of Business Analytics", "Life and Works of Rizal",
+        
         "Computer Networks 1 Lab", "Platform Technologies Lab", "Information and Project Management Lab",
     ],
     "IT4A": [
         "Social Issues & Ethics in Computing", "Information Assurance & Security 2",
         "Multimedia Systems", "IT Seminar", "Capstone Project Writing",
+        
         "Information Assurance & Security 2 Lab", "Multimedia Systems Lab",
         "IT Seminar Lab", "Capstone Project Writing Lab",
     ],
     "IT4B": [
         "Social Issues & Ethics in Computing", "Information Assurance & Security 2",
         "Multimedia Systems", "IT Seminar", "Capstone Project Writing",
+        
         "Information Assurance & Security 2 Lab", "Multimedia Systems Lab",
         "IT Seminar Lab", "Capstone Project Writing Lab",
     ],
     "IT4C": [
         "Social Issues & Ethics in Computing", "Information Assurance & Security 2",
         "Multimedia Systems", "IT Seminar", "Capstone Project Writing",
+        
         "Information Assurance & Security 2 Lab", "Multimedia Systems Lab",
         "IT Seminar Lab", "Capstone Project Writing Lab",
     ],
@@ -444,18 +453,15 @@ for room in lab_rooms:
             constraint_count += 1
 
 #penalty vars: schedule with gaps of 3+ hours (density penalty)
-# penalty variables: 6 consecutive classes
+#penalty variables: 6 consecutive classes
 overload = {}
 
-# penalty variables: 3-hour gaps between classes
+#penalty variables: 3-hour gaps between classes
 gap_penalty = {}
-
-# penalty variables: room usage per section
-room_used = {}
 
 for section in sections:
 
-    # create overload variables
+    #create overload variables
     for day in range(5):
         for start in range(4):
             overload[(section, day, start)] = LpVariable(
@@ -463,20 +469,13 @@ for section in sections:
                 cat="Binary"
             )
 
-    # create gap penalty variables
+    #create gap penalty variables
     for day in range(5):
         for start in range(1, 7):
             gap_penalty[(section, day, start)] = LpVariable(
                 f"gap_{section}_{day}_{start}",
                 cat="Binary"
             )
-
-    # create room usage variables
-    for room in lecture_rooms + lab_rooms:
-        room_used[(section, room)] = LpVariable(
-            f"room_used_{section}_{room}",
-            cat="Binary"
-        )
 
 
 print("5. Adding penalty constraints for 6 consecutive classes")
@@ -560,11 +559,10 @@ for section in sections:
                 )
                 constraint_count += 1
                 
-# objective function: minimize all penalties equally
 penalty_consecutive = lpSum(overload.values())
 penalty_gap = lpSum(gap_penalty.values())
 
-
+#obj func where it minimizes penalties
 penalty_combined = penalty_consecutive + penalty_gap
 
 #solve
@@ -584,10 +582,10 @@ if LpStatus[prob.status] != 'Optimal' and LpStatus[prob.status] != 'Feasible':
 
 
 
-#excel part
+#excel part, helper functions to visualize result
 
 
-# extract solution and build schedule data
+#extract solution and build schedule data
 print("\nExtracting solution...")
 schedule_data = []
 
@@ -613,7 +611,7 @@ for (section, subject, room, p_idx), var in x_lecture.items():
                 'TimeNum': time_idx
             })
 
-# #ror extract all lab assignments
+#unpack solved lab variables into 3-consecutive-slot schedule entries
 for (section, subject, room, start_slot), var in y_lab.items():
     if var.varValue == 1:
         three_slots = [start_slot, start_slot + 1, start_slot + 2]
@@ -633,11 +631,11 @@ for (section, subject, room, start_slot), var in y_lab.items():
                 'TimeNum': time_idx
             })
 
-# #ror build Excel output
+#write schedule to Excel
 print("\nGenerating Excel timetable...")
 output_file = r"C:\Operations Research\Schedule_Output.xlsx"
 
-# Remove existing file if it exists (to avoid permission errors)
+# remove existing file if it exists (to avoid permission errors)
 if os.path.exists(output_file):
     try:
         os.remove(output_file)
@@ -648,12 +646,12 @@ if os.path.exists(output_file):
 df = pd.DataFrame(schedule_data)
 df_sorted = df.sort_values(['Section', 'DayNum', 'TimeNum']).drop(columns=['DayNum', 'TimeNum'])
 
-# #ror setup Excel workbook & styling
+#initialize workbook and styles
 print("Creating workbook...")
 wb = Workbook()
 wb.remove(wb.active)
 
-# #ror colors & formatting
+#define cell styles for lectures, labs, and headers
 lecture_fill = PatternFill(start_color="B4C7E7", end_color="B4C7E7", fill_type="solid")
 lab_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
 header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -666,7 +664,7 @@ thin_border = Border(
     bottom=Side(style='thin')
 )
 
-# #ror sheet 1: master schedule
+#sheet 1: Master schedule list
 print("  Sheet 1: Master Schedule")
 ws_master = wb.create_sheet('Master Schedule', 0)
 headers = ['Section', 'Subject', 'Room', 'Type', 'Day', 'Time', 'Slot']
@@ -686,20 +684,19 @@ for row_idx, row in enumerate(df_sorted.itertuples(index=False), start=2):
         cell.border = thin_border
         cell.alignment = Alignment(wrap_text=True, vertical='top')
 
-# #ror auto-fit column widths
+#auto-fit column widths
 for col_idx, header in enumerate(headers, start=1):
     ws_master.column_dimensions[get_column_letter(col_idx)].width = 20
 
-# #ror sheet 2: 9x5 timetable grid
+#sheet 2: Master timetable grid
 print("  Sheet 2: Timetable")
 ws_timetable = wb.create_sheet('Timetable', 1)
 
-# Set column widths
 ws_timetable.column_dimensions['A'].width = 12
 for col_idx in range(2, 7):
     ws_timetable.column_dimensions[get_column_letter(col_idx)].width = 25
 
-# #ror header row with days
+#header row
 ws_timetable['A1'] = 'TIME'
 header_cell = ws_timetable['A1']
 header_cell.fill = header_fill
@@ -718,12 +715,11 @@ for day_idx, day in enumerate(days):
 
 ws_timetable.row_dimensions[1].height = 25
 
-# #ror fill time slots & classes
+#populate time slot cells
 for time_idx, time_slot in enumerate(times):
     row_num = time_idx + 2
     ws_timetable.row_dimensions[row_num].height = 60
 
-    # Time column
     time_cell = ws_timetable[f'A{row_num}']
     time_cell.value = time_slot
     time_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -731,12 +727,11 @@ for time_idx, time_slot in enumerate(times):
     time_cell.fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
     time_cell.font = Font(bold=True)
 
-    # #ror for each day, populate cells
+    #for each day, fill in classes
     for day_idx in range(5):
         col_letter = get_column_letter(day_idx + 2)
         slot = day_idx * 9 + time_idx + 1
 
-        # Find all classes at this slot
         classes_at_slot = df_sorted[df_sorted['Slot'] == slot]
 
         cell = ws_timetable[f'{col_letter}{row_num}']
@@ -758,18 +753,16 @@ for time_idx, time_slot in enumerate(times):
             cell.value = cell_text.strip()
             cell.font = Font(size=9)
 
-# #ror sheet 3: per section timetables
+#sheet 3: Per-section list and grid sheets
 print("  Creating section sheets...")
 for section in sorted(sections):
     section_df = df_sorted[df_sorted['Section'] == section].copy()
     if len(section_df) > 0:
         section_df_sorted = section_df.drop(columns=['Section']).sort_values(['Day', 'Time'])
         
-        # Create section list sheet
         sheet_name = f'Sec {section} List'[:31]
         ws_section = wb.create_sheet(sheet_name)
         
-        # Headers
         headers = section_df_sorted.columns.tolist()
         for col_idx, header in enumerate(headers, start=1):
             cell = ws_section.cell(row=1, column=col_idx, value=header)
@@ -777,7 +770,6 @@ for section in sorted(sections):
             cell.font = header_font
             cell.border = thin_border
         
-        # Data
         for row_idx, row in enumerate(section_df_sorted.itertuples(index=False), start=2):
             is_lab = row.Type == 'Lab'
             color = lab_fill if is_lab else lecture_fill
@@ -788,20 +780,19 @@ for section in sorted(sections):
                 cell.border = thin_border
                 cell.alignment = Alignment(wrap_text=True, vertical='top')
         
-        # #ror auto-fit columns
+        #auto-fit columns
         for col_idx in range(1, len(headers) + 1):
             ws_section.column_dimensions[get_column_letter(col_idx)].width = 18
     
-    # #ror per-section 9x5 grid timetable
+    #per-section grid timetable
     grid_sheet_name = f'{section} Timetable'[:31]
     ws_grid = wb.create_sheet(grid_sheet_name)
     
-    # Set up the grid
     ws_grid.column_dimensions['A'].width = 12
     for col_idx in range(2, 7):
         ws_grid.column_dimensions[get_column_letter(col_idx)].width = 20
     
-    # #ror header row with day names
+    #day name headers
     ws_grid['A1'] = 'TIME'
     header_cell = ws_grid['A1']
     header_cell.fill = header_fill
@@ -820,14 +811,14 @@ for section in sorted(sections):
     
     ws_grid.row_dimensions[1].height = 25
     
-    # #ror fill time slots with classes
+     #fill time slots with section classes
     section_schedule = df_sorted[df_sorted['Section'] == section].copy()
     
     for time_idx, time_slot in enumerate(times):
         row_num = time_idx + 2
         ws_grid.row_dimensions[row_num].height = 50
         
-        # #ror time label column
+        #time label column
         time_cell = ws_grid[f'A{row_num}']
         time_cell.value = time_slot
         time_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -835,12 +826,11 @@ for section in sorted(sections):
         time_cell.fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
         time_cell.font = Font(bold=True, size=10)
         
-        # For each day
         for day_idx in range(5):
             col_letter = get_column_letter(day_idx + 2)
             slot = day_idx * 9 + time_idx + 1
             
-            # #ror fetch classes at this slot
+            #lookup classes at this slot
             classes_at_slot = section_schedule[section_schedule['Slot'] == slot]
             
             cell = ws_grid[f'{col_letter}{row_num}']
@@ -848,13 +838,11 @@ for section in sorted(sections):
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             
             if len(classes_at_slot) > 0:
-                # Get subject and room
                 first_row = classes_at_slot.iloc[0]
                 subject = first_row['Subject']
                 room = first_row['Room']
                 is_lab = first_row['Type'] == 'Lab'
                 
-                # Shorten subject name if too long
                 if len(subject) > 20:
                     subject = subject[:17] + "..."
                 
@@ -864,7 +852,7 @@ for section in sorted(sections):
             else:
                 cell.fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
-# #ror sheet 4: room utilization summary
+#sheet 4: Room utilization summary
 print("  Sheet 4: Room Utilization")
 ws_rooms = wb.create_sheet('Room Utilization')
 room_util_data = []
@@ -894,7 +882,7 @@ for row_idx, row in enumerate(room_util_df.itertuples(index=False), start=2):
 for col_idx in range(1, len(headers) + 1):
     ws_rooms.column_dimensions[get_column_letter(col_idx)].width = 15
 
-# #ror sheet 5: subject assignment coverage
+#sheet 5: Subject scheduling coverage
 print("  Sheet 5: Subject Coverage")
 ws_coverage = wb.create_sheet('Subject Coverage')
 subject_coverage = []
@@ -923,7 +911,7 @@ for row_idx, row in enumerate(coverage_df.itertuples(index=False), start=2):
 for col_idx in range(1, len(headers) + 1):
     ws_coverage.column_dimensions[get_column_letter(col_idx)].width = 25
 
-# #ror save Excel file
+#save workbook to disk
 try:
     wb.save(output_file)
     print(f"Excel file saved: {output_file}")
@@ -938,7 +926,7 @@ except Exception as e:
     except Exception as e2:
         print(f"Could not save to alternative location either: {e2}")
 
-# Print summary
+#print summary
 print("\n" + "=" * 60)
 print("SCHEDULE SUMMARY")
 print("=" * 60)
