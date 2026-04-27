@@ -6,7 +6,7 @@ from openpyxl.styles import PatternFill, Alignment, Border, Side, Font
 from openpyxl.utils import get_column_letter
 import os
 
-# #ror data: rooms, time slots, days
+#used data: rooms, time slots, days (based from ccis)
 lecture_rooms = ["R100A", "R100B", "R100C", "R100D", "R100E", "R100F"]
 lab_rooms = ["Lab1", "Lab2", "Lab3", "Lab4", "Lab5", "Lab6", "Hyflex1", "Hyflex2"]
 timeslots = list(range(1, 46))  # 45 slots: 5 days × 9 hours
@@ -14,7 +14,7 @@ lunch_slots = [5, 14, 23, 32, 41]
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 times = ["8-9","9-10","10-11","11-12","12-1","1-2","2-3","3-4","4-5"]
 
-# #ror scheduling patterns: 3-unit (MWF, MTTh, etc) & 2-unit (MW, TTh, WF)
+#scheduling patterns: 3-unit (MWF, MTTh, etc) & 2-unit (MW, TTh, WF)
 scheduling_patterns = {
     3: [[1,19,37], [2,20,38], [3,21,39], [4,22,40], [5,23,41], [6,24,42], [7,25,43], [8,26,44], [9,27,45], #MWF
         [1,10,19], [2,11,20], [3,12,21], [4,13,22], [5,14,23], [6,15,24], [7,16,25], [8,17,26], [9,18,27], #MTTh
@@ -26,9 +26,9 @@ scheduling_patterns = {
         [19,37], [20,38], [21,39], [22,40], [23,41], [24,42], [25,43], [26,44], [27,45] #WF
     ]
 }
-# #ror lab slots: 3 consecutive hours, can start at these times
+#lab slots: 3 consecutive hours, can start at these times
 valid_lab_starts = [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43]
-# #ror all sections across CS & IT programs
+#all sections across CS/ IT programs
 sections = [
     "CS1A", "CS1B",
     "CS2A", "CS2B",
@@ -40,7 +40,7 @@ sections = [
     "IT4A", "IT4B", "IT4C"
 ]
 
-# #ror lecture subjects with unit counts
+#lecture subjects alongside unit counts
 lecture_subjects = {
     "Computer Programming 1": 2,
     "Computer Science Fundamentals": 2,
@@ -86,7 +86,7 @@ lecture_subjects = {
     "Capstone Project Writing": 2,
 }
 
-# #ror lab subjects (1 unit each)
+#lab subjects
 lab_subjects = {
     "Computer Programming 1 Lab": 1,
     "Computer Science Fundamentals Lab": 1,
@@ -116,7 +116,7 @@ lab_subjects = {
     "Capstone Project Writing Lab": 1,
 }
 
-# #ror curriculum subjects per section (from official curriculum)
+#curriculum subjects per section (from CCIS curriculum)
 section_subjects = {
     "CS1A": [
         "Computer Science Fundamentals", "Computer Programming 1",
@@ -251,7 +251,7 @@ section_subjects = {
     ],
 }
 
-# #ror separate lectures from labs by section
+#separate lectures from labs by section
 lecture_subjects_in_section = {
     sec: [sub for sub in section_subjects.get(sec, []) if sub in lecture_subjects]
     for sec in sections
@@ -261,7 +261,7 @@ lab_subjects_in_section = {
     for sec in sections
 }
 
-# #ror helper functions for slot conversion
+#helper functions for slot conversion
 def get_day_from_slot(slot):
     return (slot - 1) // 9
 
@@ -274,203 +274,303 @@ print("=" * 60)
 
 prob = LpProblem("RoomAllocation", LpMinimize)
 
-# #ror decision variables: lecture assignments (section, subject, room, pattern)
+#decision variables: lecture assignments (section, subject, room, pattern)
 x_lecture = {}
 for section in sections:
     for subject in lecture_subjects_in_section[section]:
         units = lecture_subjects[subject]
         patterns = scheduling_patterns.get(units, [])
+
         for pattern_idx, pattern in enumerate(patterns):
             for room in lecture_rooms:
                 var_name = f"x_lec_{section}_{subject}_{room}_{pattern_idx}"
-                x_lecture[(section, subject, room, pattern_idx)] = LpVariable(var_name, cat='Binary')
+                x_lecture[(section, subject, room, pattern_idx)] = LpVariable(
+                    var_name,
+                    cat='Binary'
+                )
 
-# #ror decision variables: lab assignments (section, subject, room, start_slot)
+#decision variables: lab assignments (section, subject, room, start_slot)
 y_lab = {}
 for section in sections:
     for subject in lab_subjects_in_section[section]:
         for room in lab_rooms:
             for start_slot in valid_lab_starts:
-                three_slots = [start_slot, start_slot + 1, start_slot + 2]
-                if all(slot < 46 for slot in three_slots):
-                    var_name = f"y_lab_{section}_{subject}_{room}_{start_slot}"
-                    y_lab[(section, subject, room, start_slot)] = LpVariable(var_name, cat='Binary')
 
-# #ror binary vars: track if section occupies a slot
+                three_slots = [start_slot, start_slot + 1, start_slot + 2]
+
+                #only valid if within same day and avoids lunch
+                if (
+                    all(slot <= 45 for slot in three_slots)
+                    and get_day_from_slot(start_slot) == get_day_from_slot(start_slot + 2)
+                    and not any(slot in lunch_slots for slot in three_slots)
+                ):
+                    var_name = f"y_lab_{section}_{subject}_{room}_{start_slot}"
+                    y_lab[(section, subject, room, start_slot)] = LpVariable(
+                        var_name,
+                        cat='Binary'
+                    )
+
+#binary vars: track if section occupies a slot
 occupy = {}
 for sec in sections:
     for slot in timeslots:
-        occupy[(sec, slot)] = LpVariable(f"occ_{sec}_{slot}", cat="Binary")
-        
+        occupy[(sec, slot)] = LpVariable(
+            f"occ_{sec}_{slot}",
+            cat="Binary"
+        )
+
+print("\nBuilding fast indexes...")
+
+#fast lookup indexes
+lecture_by_section_slot = defaultdict(list)
+lecture_by_room_slot = defaultdict(list)
+
+for (sec, subj, room, p_idx), var in x_lecture.items():
+    units = lecture_subjects[subj]
+    pattern = scheduling_patterns[units][p_idx]
+
+    for slot in pattern:
+        lecture_by_section_slot[(sec, slot)].append(var)
+        lecture_by_room_slot[(room, slot)].append(var)
+
+lab_by_section_slot = defaultdict(list)
+lab_by_room_slot = defaultdict(list)
+lab_by_section_day = defaultdict(list)
+
+for (sec, subj, room, start_slot), var in y_lab.items():
+    day = get_day_from_slot(start_slot)
+
+    for slot in [start_slot, start_slot + 1, start_slot + 2]:
+        lab_by_section_slot[(sec, slot)].append(var)
+        lab_by_room_slot[(room, slot)].append(var)
+
+    lab_by_section_day[(sec, day)].append(var)
+
 print("\nConstraints.")
 constraint_count = 0
 
-# #ror constraint 1: no overlapping classes per section
+#constraint 1: no overlapping classes per section
+print("1. No overlapping classes per section")
 
 for sec in sections:
     for slot in timeslots:
 
-        involved_vars = []
-
-        #for each subject in the section, check if it can be in this slot based on its patterns (for lectures) or 3-slot window (for labs)
-        for subject in lecture_subjects_in_section[sec]:
-            units = lecture_subjects[subject]
-            patterns = scheduling_patterns.get(units, [])
-
-            for p_idx, pattern in enumerate(patterns):
-                for room in lecture_rooms:
-                    key = (sec, subject, room, p_idx)
-                    x_var = x_lecture.get(key)
-
-                    if x_var is not None and slot in pattern:
-                        involved_vars.append(x_var)
-
-        for subject in lab_subjects_in_section[sec]:
-            for room in lab_rooms:
-                for start_slot in valid_lab_starts:
-                    key = (sec, subject, room, start_slot)
-                    y_var = y_lab.get(key)
-
-                    if y_var is not None:
-                        if slot in [start_slot, start_slot + 1, start_slot + 2]:
-                            involved_vars.append(y_var)
+        involved_vars = (
+            lecture_by_section_slot.get((sec, slot), [])
+            + lab_by_section_slot.get((sec, slot), [])
+        )
 
         if involved_vars:
             prob += lpSum(involved_vars) <= 1, f"slot_exclusive_{sec}_{slot}"
             constraint_count += 1
 
-# #ror penalty vars: track dense class windows (penalize in objective)
-overload = {}
-for sec in sections:
-    for day in range(5):
-        for start in range(4):  # 6-hour windows
-            overload[(sec, day, start)] = LpVariable(
-                f"overload_{sec}_{day}_{start}",
-                cat="Binary"
-            )
+#link occupy vars to actual assignments
+print("1b. Linking occupancy variables")
 
-# #ror constraint 2: every lecture subject assigned exactly once
-print("2. Every subject must be assigned")
+for sec in sections:
+    for slot in timeslots:
+
+        involved_vars = (
+            lecture_by_section_slot.get((sec, slot), [])
+            + lab_by_section_slot.get((sec, slot), [])
+        )
+
+        if involved_vars:
+            prob += occupy[(sec, slot)] == lpSum(involved_vars)
+            constraint_count += 1
+
+#constraint 2: every lecture subject assigned exactly once
+print("2. Every lecture subject must be assigned")
+
 for section in sections:
     for subject in lecture_subjects_in_section[section]:
+
         units = lecture_subjects[subject]
         patterns = scheduling_patterns.get(units, [])
-        
-        #Sum of all (room, pattern) assignments for this subject = 1
-        subject_vars = [x_lecture[(section, subject, room, p_idx)]
-                       for p_idx in range(len(patterns))
-                       for room in lecture_rooms
-                       if (section, subject, room, p_idx) in x_lecture]
-        
+
+        subject_vars = [
+            x_lecture[(section, subject, room, p_idx)]
+            for p_idx in range(len(patterns))
+            for room in lecture_rooms
+            if (section, subject, room, p_idx) in x_lecture
+        ]
+
         if subject_vars:
             prob += lpSum(subject_vars) == 1, f"lec_assign_{section}_{subject}"
             constraint_count += 1
 
-#every lab subhect must be assigned, and assigned at one of the lab starts
-print("2. Each lab subject exactly once")
+#constraint 2b: every lab subject assigned exactly once
+print("2b. Every lab subject must be assigned")
+
 for section in sections:
     for subject in lab_subjects_in_section[section]:
-        subject_vars = [y_lab[(section, subject, room, start_slot)]
-                       for room in lab_rooms
-                       for start_slot in valid_lab_starts
-                       if (section, subject, room, start_slot) in y_lab]
-        
+
+        subject_vars = [
+            y_lab[(section, subject, room, start_slot)]
+            for room in lab_rooms
+            for start_slot in valid_lab_starts
+            if (section, subject, room, start_slot) in y_lab
+        ]
+
         if subject_vars:
             prob += lpSum(subject_vars) == 1, f"lab_assign_{section}_{subject}"
             constraint_count += 1
 
-# #ror constraint 3: no lecture room double-booking
+#constraint 3: no lecture room double-booking
 print("3. No lecture room double-booking")
+
 for room in lecture_rooms:
     for slot in timeslots:
+
         if slot in lunch_slots:
             continue
-        
-        #find all lecture assignments that use this room at this slot
-        room_slot_vars = []
-        for section in sections:
-            for subject in lecture_subjects_in_section[section]:
-                units = lecture_subjects[subject]
-                patterns = scheduling_patterns.get(units, [])
-                
-                for p_idx, pattern in enumerate(patterns):
-                    if slot in pattern:
-                        key = (section, subject, room, p_idx)
-                        if key in x_lecture:
-                            room_slot_vars.append(x_lecture[key])
-        
+
+        room_slot_vars = lecture_by_room_slot.get((room, slot), [])
+
         if room_slot_vars:
             prob += lpSum(room_slot_vars) <= 1, f"lec_room_slot_{room}_{slot}"
             constraint_count += 1
 
-# #ror constraint 4: no lab room double-booking
+#constraint 4: no lab room double-booking
 print("4. No lab room double-booking")
+
 for room in lab_rooms:
     for slot in timeslots:
-        # Find all lab assignments that use this room at this slot
-        room_slot_vars = []
-        for section in sections:
-            for subject in lab_subjects_in_section[section]:
-                for start_slot in valid_lab_starts:
-                    three_slots = [start_slot, start_slot + 1, start_slot + 2]
-                    if slot in three_slots:
-                        key = (section, subject, room, start_slot)
-                        if key in y_lab:
-                            room_slot_vars.append(y_lab[key])
-        
+
+        room_slot_vars = lab_by_room_slot.get((room, slot), [])
+
         if room_slot_vars:
             prob += lpSum(room_slot_vars) <= 1, f"lab_room_slot_{room}_{slot}"
             constraint_count += 1
 
-print("5. Adding workload penalty constraints")
+#penalty vars: schedule with gaps of 3+ hours (density penalty)
+# penalty variables: 6 consecutive classes
+overload = {}
 
-for sec in sections:
+# penalty variables: 3-hour gaps between classes
+gap_penalty = {}
+
+# penalty variables: room usage per section
+room_used = {}
+
+for section in sections:
+
+    # create overload variables
     for day in range(5):
+        for start in range(4):
+            overload[(section, day, start)] = LpVariable(
+                f"overload_{section}_{day}_{start}",
+                cat="Binary"
+            )
+
+    # create gap penalty variables
+    for day in range(5):
+        for start in range(1, 7):
+            gap_penalty[(section, day, start)] = LpVariable(
+                f"gap_{section}_{day}_{start}",
+                cat="Binary"
+            )
+
+    # create room usage variables
+    for room in lecture_rooms + lab_rooms:
+        room_used[(section, room)] = LpVariable(
+            f"room_used_{section}_{room}",
+            cat="Binary"
+        )
+
+
+print("5. Adding penalty constraints for 6 consecutive classes")
+
+for section in sections:
+    for day in range(5):
+
         base = day * 9
 
-        for start in range(0, 4):  #windows of 6 slots
-            window_slots = [base + start + i for i in range(6)]
+        for start in range(4):
+
+            # build 6-slot window
+            window_slots = [base + start + i + 1 for i in range(6)]
 
             involved = []
 
+            # collect all classes in this window
             for slot in window_slots:
-                #LECTURES
-                for subject in lecture_subjects_in_section[sec]:
-                    units = lecture_subjects[subject]
-                    patterns = scheduling_patterns.get(units, [])
-
-                    for p_idx, pattern in enumerate(patterns):
-                        for room in lecture_rooms:
-                            key = (sec, subject, room, p_idx)
-                            x_var = x_lecture.get(key)
-
-                            if x_var is not None and slot in pattern:
-                                involved.append(x_var)
-
-                #LABS
-                for subject in lab_subjects_in_section[sec]:
-                    for room in lab_rooms:
-                        for start_slot in valid_lab_starts:
-                            key = (sec, subject, room, start_slot)
-                            y_var = y_lab.get(key)
-
-                            if y_var is not None:
-                                if slot in [start_slot, start_slot + 1, start_slot + 2]:
-                                    involved.append(y_var)
+                involved.extend(
+                    lecture_by_section_slot.get((section, slot), [])
+                )
+                involved.extend(
+                    lab_by_section_slot.get((section, slot), [])
+                )
 
             if involved:
-                prob += overload[(sec, day, start)] <= lpSum(involved)
+                # penalty activates if all 6 slots are occupied
+                prob += (
+                    lpSum(involved) - 5 <= overload[(section, day, start)]
+                )
+                constraint_count += 1
 
-print(f"Total constraints: {constraint_count}")
 
-print("\nOBJ FUNCTION: Minimize class density, room changes, and lab spread")
+print("6. Adding penalty constraints for 3-hour gaps")
+
+for section in sections:
+    for day in range(5):
+
+        base = day * 9
+
+        for start in range(1, 7):
+
+            # left and right class positions
+            left_slot = base + start
+            right_slot = base + start + 4
+
+            # gap slots in between
+            middle_slots = [
+                base + start + 1,
+                base + start + 2,
+                base + start + 3
+            ]
+
+            left_vars = (
+                lecture_by_section_slot.get((section, left_slot), []) +
+                lab_by_section_slot.get((section, left_slot), [])
+            )
+
+            right_vars = (
+                lecture_by_section_slot.get((section, right_slot), []) +
+                lab_by_section_slot.get((section, right_slot), [])
+            )
+
+            middle_vars = []
+
+            for slot in middle_slots:
+                middle_vars.extend(
+                    lecture_by_section_slot.get((section, slot), [])
+                )
+                middle_vars.extend(
+                    lab_by_section_slot.get((section, slot), [])
+                )
+
+            if left_vars and right_vars:
+                # penalty activates if there is a long gap
+                prob += (
+                    lpSum(left_vars) +
+                    lpSum(right_vars) -
+                    lpSum(middle_vars)
+                    <= 1 + gap_penalty[(section, day, start)]
+                )
+                constraint_count += 1
+                
+# objective function: minimize all penalties equally
 penalty_consecutive = lpSum(overload.values())
-penalty_combined = penalty_consecutive
+penalty_gap = lpSum(gap_penalty.values())
 
-prob += penalty_combined, "Objective"
+
+penalty_combined = penalty_consecutive + penalty_gap
 
 #solve
-print("\nSolving...")
+print("Solving...")
+prob += penalty_combined, "Objective"
+
 prob.solve(PULP_CBC_CMD(msg=0, timeLimit=300))
 
 print(f"Status: {LpStatus[prob.status]}")
@@ -478,6 +578,14 @@ print(f"Status: {LpStatus[prob.status]}")
 if LpStatus[prob.status] != 'Optimal' and LpStatus[prob.status] != 'Feasible':
     print("ERROR: Could not find a feasible schedule!")
     exit(1)
+
+
+
+
+
+
+#excel part
+
 
 # extract solution and build schedule data
 print("\nExtracting solution...")
