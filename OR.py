@@ -463,97 +463,9 @@ for sec in sections:
 
 print(f"Total constraints: {constraint_count}")
 
-# (penalty 1: room changes between consecutive classes in different rooms)
-print("6. Adding room consistency penalty")
-
-room_used = {}
-room_change_penalties = []
-
-# Penalize using many different rooms in the same section
-for sec in sections:
-
-    all_rooms = lecture_rooms + lab_rooms
-    section_subjects_all = section_subjects.get(sec, [])
-
-    for room in all_rooms:
-
-        room_used[(sec, room)] = LpVariable(
-            f"room_used_{sec}_{room}",
-            cat="Binary"
-        )
-
-        room_assignments = []
-
-        # lecture assignments in this room
-        for subject in lecture_subjects_in_section[sec]:
-            units = lecture_subjects[subject]
-            patterns = scheduling_patterns.get(units, [])
-
-            for p_idx in range(len(patterns)):
-                key = (sec, subject, room, p_idx)
-
-                if key in x_lecture:
-                    room_assignments.append(x_lecture[key])
-
-        # lab assignments in this room
-        for subject in lab_subjects_in_section[sec]:
-            for start_slot in valid_lab_starts:
-                key = (sec, subject, room, start_slot)
-
-                if key in y_lab:
-                    room_assignments.append(y_lab[key])
-
-        if room_assignments:
-            # if any subject uses this room, activate room_used
-            for var in room_assignments:
-                prob += room_used[(sec, room)] >= var
-
-            room_change_penalties.append(room_used[(sec, room)])
-
-# total rooms used by a section = penalty
-penalty_room_change = lpSum(room_change_penalties)
-
-# (penalty: multiple labs in same day for the same section)
-# FAST LAB SAME-DAY PENALTY
-print("7. Adding lab clustering penalty")
-
-lab_day_penalties = []
-
-for sec in sections:
-    for day in range(5):
-
-        labs_today = []
-
-        for subject in lab_subjects_in_section[sec]:
-            for room in lab_rooms:
-                for start_slot in valid_lab_starts:
-
-                    key = (sec, subject, room, start_slot)
-
-                    if key in y_lab:
-                        if get_day_from_slot(start_slot) == day:
-                            labs_today.append(y_lab[key])
-
-        if labs_today:
-            # penalty only if more than 1 lab on this day
-            overload_lab = LpVariable(
-                f"lab_overload_{sec}_{day}",
-                lowBound=0,
-                cat="Integer"
-            )
-
-            # if 1 lab = 0 penalty
-            # if 2 labs = 1 penalty
-            # if 3 labs = 2 penalty
-            prob += overload_lab >= lpSum(labs_today) - 1
-
-            lab_day_penalties.append(overload_lab)
-
-penalty_lab_same_day = lpSum(lab_day_penalties)
-
 print("\nOBJ FUNCTION: Minimize class density, room changes, and lab spread")
 penalty_consecutive = lpSum(overload.values())
-penalty_combined = penalty_consecutive + penalty_room_change + penalty_lab_same_day
+penalty_combined = penalty_consecutive
 
 prob += penalty_combined, "Objective"
 
